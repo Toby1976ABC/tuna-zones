@@ -1,0 +1,17 @@
+{
+  "name": "Tuna Zones",
+  "short_name": "Tuna Zones",
+  "description": "Likely bluefin, albacore and marlin zones from La Rochelle to San Sebastián.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B2533",
+  "theme_color": "#0B2533",
+  "lang": "fr",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

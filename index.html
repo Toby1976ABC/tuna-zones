@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tuna Zones</title>
+<meta name="description" content="Likely bluefin, albacore and marlin zones from La Rochelle to San Sebastián, from live sea temperature, fronts, seabed and wind.">
+<meta name="theme-color" content="#0B2533">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="hrow">
+      <h1>Tuna Zones</h1>
+      <div class="hright">
+        <div class="lang" role="group" id="lang" data-i18n-aria="langLabel" aria-label="Language">
+          <button type="button" data-lang="fr" aria-pressed="false" lang="fr">FR</button>
+          <button type="button" data-lang="en" aria-pressed="true" lang="en">EN</button>
+        </div>
+        <button class="refresh" id="refresh" type="button" data-i18n-aria="refresh" aria-label="Refresh forecast"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"></path><path d="M20 4v7h-7"></path></svg></button>
+      </div>
+    </div>
+    <div class="hrow sub">
+      <p data-i18n="subtitle">La Rochelle → San Sebastián · up to 100 km offshore</p>
+      <span class="run" id="fresh"><span class="dot"></span><span id="freshTxt">…</span></span>
+    </div>
+  </header>
+  <div id="msg" class="banner" role="status" hidden></div>
+
+  <section class="species" id="species">
+    <button type="button" class="chip" data-sp="bluefin" aria-pressed="true" data-i18n="sp_bluefin">Bluefin tuna</button>
+    <button type="button" class="chip" data-sp="albacore" aria-pressed="false" data-i18n="sp_albacore">Albacore</button>
+    <button type="button" class="chip" data-sp="marlin" aria-pressed="false" data-i18n="sp_marlin">Marlin</button>
+  </section>
+  <p class="spnote" id="spNote"></p>
+
+  <nav class="days" id="days" data-i18n-aria="daysLabel" aria-label="Forecast day"></nav>
+
+  <section class="cond">
+    <div><span class="k" data-i18n="wind">Wind</span><span class="v"><svg id="windArrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M6 15l6 6 6-6"></path></svg><span id="cWind">–</span></span></div>
+    <div><span class="k" data-i18n="waves">Waves (avg max)</span><span class="v" id="cWave">–</span></div>
+    <div><span class="k" data-i18n="sst">Surface temp</span><span class="v" id="cSst">–</span></div>
+    <div class="pills"><span class="pill" id="cUp"></span><span class="pill" id="cSea"></span></div>
+  </section>
+
+  <section class="mapsec">
+    <div class="maphead"><h2 data-i18n="whereLook">Where to look</h2><span data-i18n="tapSquare">Tap a square</span></div>
+    <div class="layers" id="layer" role="group">
+      <button type="button" data-ly="score" aria-pressed="true" data-i18n="ly_score">Likely zones</button>
+      <button type="button" data-ly="sst" aria-pressed="false" data-i18n="ly_sst">Sea temp</button>
+      <button type="button" data-ly="front" aria-pressed="false" data-i18n="ly_front">Fronts</button>
+    </div>
+    <div class="chart" id="chart">
+      <canvas id="map"></canvas>
+      <span class="tagline" data-i18n="tagline">Atlantic · ~100 km band</span>
+      <div class="pickhint" id="hint" hidden data-i18n="pickHint">Tap the chart where you saw fish</div>
+    </div>
+    <div class="ramp" id="ramp"></div>
+    <div class="keys">
+      <span><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4"></line></svg><span data-i18n="k_shelf">Shelf edge ~200 m (approx.)</span></span>
+      <span><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--canyon)" stroke-width="2" stroke-dasharray="2 3"></line></svg><span data-i18n="k_canyon">Canyons</span></span>
+      <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" fill="var(--port)"></circle></svg><span data-i18n="k_town">Beach / town</span></span>
+      <span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1 11 10H1Z" fill="var(--bg)" stroke="currentColor" stroke-width="1.4"></path></svg><span data-i18n="k_sight">Sighting</span></span>
+      <span><svg width="14" height="12" viewBox="0 0 14 12" aria-hidden="true"><path d="M0 12 12 0M5 12 14 3M0 7 7 0" stroke="currentColor" stroke-width="1"></path></svg><span data-i18n="k_rough">Waves ≥ 2.5 m</span></span>
+    </div>
+  </section>
+
+  <section class="sel" id="selCard" aria-live="polite">
+    <div class="selhead">
+      <div><span class="selpos" id="selPos">–</span><span class="selport" id="selPort"></span></div>
+      <span class="big"><span id="selScore">–</span><small>/100</small></span>
+    </div>
+    <dl class="facts">
+      <div><dt data-i18n="f_sst">Surface temp</dt><dd id="fSst">–</dd></div>
+      <div><dt data-i18n="f_front">Front strength</dt><dd id="fFront">–</dd></div>
+      <div><dt data-i18n="f_pers">Front days (±1 day)</dt><dd id="fPers">–</dd></div>
+      <div><dt data-i18n="f_struct">To shelf edge / canyon</dt><dd id="fStruct">–</dd></div>
+      <div><dt data-i18n="f_up">Upwelling</dt><dd id="fUp">–</dd></div>
+      <div><dt data-i18n="f_wave">Waves (max)</dt><dd id="fWave">–</dd></div>
+    </dl>
+    <div class="why" id="selWhy"></div>
+  </section>
+
+  <section class="top">
+    <h2 id="zonesTitle"></h2>
+    <div id="zones" class="zlist"></div>
+  </section>
+
+  <section class="log">
+    <h2 data-i18n="logTitle">Log a sighting</h2>
+    <form id="sightForm" class="sform">
+      <div class="field"><label for="sSp" data-i18n="species">Species</label>
+        <select id="sSp"><option value="bluefin" data-i18n="sp_bluefin">Bluefin tuna</option><option value="albacore" data-i18n="sp_albacore">Albacore</option><option value="marlin" data-i18n="sp_marlin">Marlin</option><option value="other" data-i18n="sp_other">Birds working / bait ball</option></select></div>
+      <div class="field"><label for="sPos" data-i18n="where">Where (position)</label><input id="sPos" type="text" autocomplete="off" data-i18n-ph="wherePh" placeholder="e.g. 44°10'N 1°52'W" required></div>
+      <div class="btnrow">
+        <button type="button" class="ghost" id="pickBtn" aria-pressed="false" data-i18n="pickMap">Pick on map</button>
+        <button type="button" class="ghost" id="gpsBtn" data-i18n="myPos">My position</button>
+      </div>
+      <div class="two2">
+        <div class="field"><label for="sDate" data-i18n="date">Date</label><input id="sDate" type="date" required></div>
+        <div class="field"><label for="sNote" data-i18n="notes">Notes</label><input id="sNote" type="text" maxlength="140" data-i18n-ph="notesPh" placeholder="Temp, depth, lure, time"></div>
+      </div>
+      <button type="submit" class="primary" data-i18n="add">Add to log</button>
+    </form>
+    <ul class="entries" id="slist"></ul>
+    <div class="btnrow">
+      <button type="button" class="ghost" id="exportBtn" data-i18n="export">Export</button>
+      <button type="button" class="ghost" id="importBtn" data-i18n="import">Import</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+    <p class="small" data-i18n="logNote"></p>
+  </section>
+
+  <details class="weights" id="weights">
+    <summary data-i18n="adjust">Adjust scoring</summary>
+    <div class="sliders" id="sliders"></div>
+    <p class="small" data-i18n="gateNote"></p>
+  </details>
+
+  <footer>
+    <p id="scoreNote"></p>
+    <p id="dataNote"></p>
+    <p><span data-i18n="crossCheck">Cross-check:</span> <a href="https://data.marine.copernicus.eu/viewer" target="_blank" rel="noopener">Copernicus</a> · <a href="https://globalfishingwatch.org/map" target="_blank" rel="noopener">Global Fishing Watch</a> · <a href="https://marc.ifremer.fr/" target="_blank" rel="noopener">Ifremer MARC</a> · <a href="https://www.windy.com/?43.9,-1.9,8" target="_blank" rel="noopener">Windy</a></p>
+    <p data-i18n="install"></p>
+    <p data-i18n="notNav">Not a navigation chart.</p>
+  </footer>
+</div>
+<script src="js/i18n.js"></script>
+<script src="js/geo.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -36,8 +36,13 @@ const kn=kmh=>kmh/1.852;
 const SPECIES={
   bluefin:{lo:17,hi:21.5,lo0:14,hi0:24.5,off:()=>1},
   albacore:{lo:16,hi:19,lo0:14,hi0:21.5,off:cd=>cd<15?0.5:cd<40?0.8:1},
-  marlin:{lo:22,hi:28,lo0:20.5,hi0:30,off:cd=>cd<10?0.7:1}
+  marlin:{lo:22,hi:28,lo0:20.5,hi0:30,off:cd=>cd<10?0.7:1},
+  // Bonito (Atlantic bonito + skipjack / listao): mostly over the shelf, 20–200 m.
+  bonito:{lo:18,hi:23,lo0:15.5,hi0:26,off:(cd,dp)=>dp==null?0.7:dp<15?0.6:dp<=200?1:dp<=1000?0.85:0.7}
 };
+// Depth shown rounded to what a ~9 km grid can support.
+function fmtDepth(dp){if(dp==null)return t("shallow");const r=dp<100?5:dp<1000?10:50;return"~"+fmtNum(Math.max(r,Math.round(dp/r)*r),0)+" m";}
+function groundKey(st){if(st.depth==null||st.depth<200)return st.canyon<6&&st.depth!=null&&st.depth>=120?"g_canyon":"g_shelf";if(st.canyon<8)return"g_canyon";return st.depth<1000?"g_slope":"g_deep";}
 function tempFit(sp,tc){const s=SPECIES[sp];if(tc==null)return 0;if(tc>=s.lo&&tc<=s.hi)return 1;if(tc<s.lo)return Math.max(0,(tc-s.lo0)/(s.lo-s.lo0));return Math.max(0,(s.hi0-tc)/(s.hi0-s.hi));}
 let GRADS=null;
 function prepare(){
@@ -59,7 +64,7 @@ function compute(d){
     const st=STATIC[i],structure=clamp(Math.max(Math.exp(-st.shelf/12),Math.exp(-st.canyon/10)));
     const up=clamp(Math.min(upNow(la),upPrev(la))/25)*Math.exp(-(((st.coast-15)/12)**2));
     const sight=sightScore(la,lo,d);
-    const tf=tempFit(sp,tc),off=SPECIES[sp].off(st.coast);
+    const tf=tempFit(sp,tc),off=SPECIES[sp].off(st.coast,st.depth);
     const mix=(W.front*front*(0.5+0.5*pers)+W.structure*structure+W.upwelling*up+W.sightings*sight)/tot;
     const score=tf*off*(0.1+0.9*mix);
     const why=[[tf>=0.95?"w_in":tf>0?"w_marg":"w_out",{t:fmtNum(tc,1)}]];
@@ -67,7 +72,7 @@ function compute(d){
     if(st.canyon<12)why.push(["w_canyon"]);else if(st.shelf<12)why.push(["w_shelf"]);
     if(up>0.3)why.push(["w_up"]);
     if(sight>0.15)why.push(["w_sight"]);
-    return{i,lat:la,lon:lo,t:tc,g,front,pers,pc,pn,structure,up,sight,tf,score,why,wave:s.wave[i][d],coast:st.coast};
+    return{i,lat:la,lon:lo,t:tc,g,front,pers,pc,pn,structure,up,sight,tf,score,why,wave:s.wave[i][d],coast:st.coast,depth:st.depth};
   });
 }
 function topZones(cells,n=5){const sorted=cells.filter(Boolean).sort((a,b)=>b.score-a.score),out=[];for(const c of sorted){if(out.every(o=>km(o.lat,o.lon,c.lat,c.lon)>20))out.push(c);if(out.length>=n)break;}return out;}
@@ -84,6 +89,8 @@ function ramp(stops,f){f=clamp(f);const k=Math.min(stops.length-2,Math.floor(f*(
 const SCORE_STOPS=()=>["--r0","--r1","--r2","--r3","--r4","--r5"].map(v=>hexToRgb(css(v)));
 const SST_STOPS=[[49,84,180],[62,160,200],[120,200,170],[240,215,110],[236,130,60],[200,50,50]];
 const FRONT_STOPS=()=>[hexToRgb(css("--r0")),[170,160,220],[122,62,157],[60,10,110]];
+const DEPTH_STOPS=[[214,236,242],[160,208,228],[96,160,206],[48,104,168],[24,58,118],[10,28,66]];
+const depthFrac=dp=>dp==null?0:clamp(Math.log(Math.max(dp,10)/10)/Math.log(250));
 const CW=0.135,CH=0.13;
 function cellRect(c){const[x1,y1]=proj(c.lat+CH/2,c.lon-CW/2),[x2,y2]=proj(c.lat-CH/2,c.lon+CW/2);return[x1,y1,x2-x1,y2-y1];}
 function selIndex(){return S.sel!=null&&CELLS[S.sel]?S.sel:(TOP[0]?TOP[0].i:null);}
@@ -98,12 +105,14 @@ function draw(){
   for(const c of CELLS){if(!c)continue;let col;
     if(S.layer==="score")col=ramp(sc,clamp(c.score/0.75));
     else if(S.layer==="sst")col=ramp(SST_STOPS,(c.t-tmin)/Math.max(0.5,tmax-tmin));
+    else if(S.layer==="depth")col=ramp(DEPTH_STOPS,depthFrac(c.depth));
     else col=ramp(fr,c.front);
     const[x,y,w,h]=cellRect(c);ctx.fillStyle=`rgb(${col})`;ctx.fillRect(x,y,w+0.5,h+0.5);ctx.strokeStyle=cl;ctx.strokeRect(x,y,w,h);}
   ctx.strokeStyle=css("--ink");ctx.globalAlpha=.28;ctx.lineWidth=1;
   for(const c of CELLS){if(!c||c.wave==null||c.wave<2.5)continue;const[x1,y1,w,h]=cellRect(c);ctx.save();ctx.beginPath();ctx.rect(x1,y1,w,h);ctx.clip();ctx.beginPath();for(let k=-h;k<w+h;k+=6){ctx.moveTo(x1+k,y1+h);ctx.lineTo(x1+k+h,y1);}ctx.stroke();ctx.restore();}
   ctx.globalAlpha=1;
-  ctx.setLineDash([4,4]);ctx.strokeStyle=css("--ink");ctx.globalAlpha=.7;ctx.lineWidth=1.2;ctx.beginPath();path(SHELF);ctx.stroke();ctx.globalAlpha=1;
+  ctx.setLineDash([4,4]);ctx.strokeStyle=css("--ink");ctx.globalAlpha=.7;ctx.lineWidth=1.2;for(const l of SHELF){ctx.beginPath();path(l);ctx.stroke();}
+  ctx.setLineDash([1,3]);ctx.globalAlpha=.55;ctx.lineWidth=1;for(const l of ISO1000){ctx.beginPath();path(l);ctx.stroke();}ctx.globalAlpha=1;
   ctx.setLineDash([2,3]);ctx.strokeStyle=css("--canyon");ctx.lineWidth=2;for(const c of CANYONS){ctx.beginPath();path(c.pts);ctx.stroke();}
   ctx.setLineDash([]);
   ctx.fillStyle=css("--land");ctx.strokeStyle=css("--landline");ctx.lineWidth=1;
@@ -112,7 +121,7 @@ function draw(){
   drawTowns();
   const sans=css("--f-sans");
   ctx.font=`italic 11px ${sans}`;ctx.fillStyle=css("--muted");ctx.textAlign="left";ctx.textBaseline="middle";
-  {const[x,y]=proj(44.95,-2.55);ctx.fillText("≈200 m",x,y);} {const[x,y]=proj(43.7,-2.62);ctx.fillText("Gouf de Capbreton",x-30,y-8);}
+  {const[x,y]=proj(44.42,-2.05);ctx.fillText("200 m",x+4,y);} {const[x,y]=proj(44.15,-2.42);ctx.fillText("1000 m",x-2,y);} {const[x,y]=proj(43.7,-2.62);ctx.fillText("Gouf de Capbreton",x-30,y-8);}
   for(const x of S.sightings){const age=(new Date(S.snap.days[S.day]+"T12:00:00")-new Date(x.date+"T12:00:00"))/864e5;if(age>14||age<-1)continue;const[px,py]=proj(x.lat,x.lon);ctx.strokeStyle=css("--ink");ctx.fillStyle=css("--bg");ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(px,py-6);ctx.lineTo(px+5,py+4);ctx.lineTo(px-5,py+4);ctx.closePath();ctx.fill();ctx.stroke();}
   if(S.pending){const[px,py]=proj(S.pending[0],S.pending[1]);ctx.strokeStyle=css("--accent");ctx.fillStyle=css("--accent");ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(px,py,8,0,7);ctx.stroke();ctx.beginPath();ctx.arc(px,py,2,0,7);ctx.fill();}
   const si=selIndex();if(si!=null&&CELLS[si]){const[x,y,w,h]=cellRect(CELLS[si]);ctx.strokeStyle=css("--accent");ctx.lineWidth=2.5;ctx.strokeRect(x,y,w,h);}
@@ -139,6 +148,7 @@ function swatches(stops){return stops.map(c=>`<span style="background:rgb(${c})"
 function drawLegend(tmin,tmax){const L=$("ramp");
   if(S.layer==="score")L.innerHTML=`<span>${t("low")}</span><span class="bar">${swatches(SCORE_STOPS())}</span><span>${t("high")}</span>`;
   else if(S.layer==="sst")L.innerHTML=`<span class="mono">${fmtNum(tmin,1)} °C</span><span class="bar">${swatches(SST_STOPS)}</span><span class="mono">${fmtNum(tmax,1)} °C</span>`;
+  else if(S.layer==="depth")L.innerHTML=`<span class="mono">10 m</span><span class="bar">${swatches(DEPTH_STOPS)}</span><span class="mono">${fmtNum(2500,0)} m</span>`;
   else L.innerHTML=`<span>${t("gentle")}</span><span class="bar">${swatches(FRONT_STOPS())}</span><span>${t("sharp")}</span>`;}
 
 // ---------- UI ----------
@@ -174,6 +184,7 @@ function renderDetail(){const i=selIndex(),c=i!=null?CELLS[i]:null;$("selCard").
   $("fFront").textContent=`${fmtNum(c.g*10,2)} ${t("perTen")}`;
   $("fPers").textContent=t("ofN",{a:c.pc,b:c.pn});
   $("fStruct").textContent=`${Math.round(st.shelf)} km / ${Math.round(st.canyon)} km`;
+  $("fDepth").textContent=fmtDepth(st.depth);$("fGround").textContent=t(groundKey(st));
   $("fUp").textContent=upLabel(c.up);
   $("fWave").textContent=c.wave!=null?`${fmtNum(c.wave,1)} m`:"–";
   const box=$("selWhy");box.innerHTML="";
@@ -184,7 +195,7 @@ function renderZones(){const box=$("zones");box.innerHTML="";
   const si=selIndex();
   TOP.forEach((c,k)=>{const b=document.createElement("button");b.type="button";b.className="zone";b.setAttribute("aria-current",String(si===c.i));
     const extra=c.why.slice(1).map(whyText).join(" · ");
-    b.innerHTML=`<span class="n">${k+1}</span><span class="mid"><span class="pos">${fmtPos(c.lat,c.lon)}</span><span class="sub">${fromTown(c.lat,c.lon)} · ${fmtNum(c.t,1)} °C</span>${extra?`<span class="sub">${extra}</span>`:""}</span><span class="sc">${Math.round(c.score*100)}</span>`;
+    b.innerHTML=`<span class="n">${k+1}</span><span class="mid"><span class="pos">${fmtPos(c.lat,c.lon)}</span><span class="sub">${fromTown(c.lat,c.lon)} · ${fmtNum(c.t,1)} °C · ${fmtDepth(c.depth)}</span>${extra?`<span class="sub">${extra}</span>`:""}</span><span class="sc">${Math.round(c.score*100)}</span>`;
     b.onclick=()=>{S.sel=c.i;update(false);$("selCard").scrollIntoView({behavior:reduced()?"auto":"smooth",block:"nearest"});};box.appendChild(b);});}
 const reduced=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
 function renderSliders(){const box=$("sliders");box.innerHTML="";
@@ -199,7 +210,7 @@ function renderSightings(){const ul=$("slist");ul.innerHTML="";const list=[...S.
   if(!list.length){const li=document.createElement("li");li.className="small";li.textContent=t("noLogs");ul.appendChild(li);return;}
   for(const x of list){const li=document.createElement("li");li.className="entry";const div=document.createElement("div");
     const b=document.createElement("b");b.textContent=`${t("sp_"+x.species)||x.species} · ${new Date(x.date+"T12:00:00").toLocaleDateString(t("locale"),{weekday:"short",day:"numeric",month:"short"})}`;
-    const pos=document.createElement("span");pos.className="muted mono";pos.textContent=`${fmtPos(x.lat,x.lon)} · ${fromTown(x.lat,x.lon)}`;
+    const pos=document.createElement("span");pos.className="muted mono";pos.textContent=`${fmtPos(x.lat,x.lon)} · ${fromTown(x.lat,x.lon)} · ${fmtDepth(depthAt(x.lat,x.lon))}`;
     div.append(b,pos);
     if(x.note){const n=document.createElement("span");n.className="muted";n.textContent=x.note;div.appendChild(n);}
     const rm=document.createElement("button");rm.type="button";rm.textContent=t("remove");
@@ -256,7 +267,7 @@ $("importFile").onchange=async e=>{const f=e.target.files[0];e.target.value="";i
   try{const data=JSON.parse(await f.text());const arr=Array.isArray(data)?data:data.sightings;if(!Array.isArray(arr))throw 0;
     const have=new Set(S.sightings.map(x=>x.id));let n=0;
     for(const x of arr){if(typeof x.lat!=="number"||typeof x.lon!=="number"||!/^\d{4}-\d{2}-\d{2}$/.test(x.date||""))continue;
-      const rec={id:String(x.id||Date.now().toString(36)+Math.random().toString(36).slice(2,7)),lat:x.lat,lon:x.lon,species:["bluefin","albacore","marlin","other"].includes(x.species)?x.species:"other",date:x.date,note:String(x.note||"").slice(0,140),createdAt:x.createdAt||new Date().toISOString()};
+      const rec={id:String(x.id||Date.now().toString(36)+Math.random().toString(36).slice(2,7)),lat:x.lat,lon:x.lon,species:["bluefin","albacore","marlin","bonito","other"].includes(x.species)?x.species:"other",date:x.date,note:String(x.note||"").slice(0,140),createdAt:x.createdAt||new Date().toISOString()};
       if(have.has(rec.id))continue;have.add(rec.id);S.sightings.push(rec);n++;}
     saveSightings();renderSightings();update(false);showMsg(n?t("m_imported",{n}):t("m_importNone"),false,true);
   }catch(err){showMsg(t("m_importBad"),true);}};

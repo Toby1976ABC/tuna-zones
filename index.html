@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Tuna Zones</title>
-<meta name="description" content="Likely bluefin, albacore and marlin zones from La Rochelle to San Sebastián, from live sea temperature, fronts, seabed and wind.">
+<meta name="description" content="Likely bluefin, albacore, bonito and marlin zones from La Rochelle to San Sebastián, from live sea temperature, fronts, seabed and wind.">
 <meta name="theme-color" content="#0B2533">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
@@ -40,6 +40,7 @@
     <button type="button" class="chip" data-sp="bluefin" aria-pressed="true" data-i18n="sp_bluefin">Bluefin tuna</button>
     <button type="button" class="chip" data-sp="albacore" aria-pressed="false" data-i18n="sp_albacore">Albacore</button>
     <button type="button" class="chip" data-sp="marlin" aria-pressed="false" data-i18n="sp_marlin">Marlin</button>
+    <button type="button" class="chip" data-sp="bonito" aria-pressed="false" data-i18n="sp_bonito">Bonito</button>
   </section>
   <p class="spnote" id="spNote"></p>
 
@@ -58,6 +59,7 @@
       <button type="button" data-ly="score" aria-pressed="true" data-i18n="ly_score">Likely zones</button>
       <button type="button" data-ly="sst" aria-pressed="false" data-i18n="ly_sst">Sea temp</button>
       <button type="button" data-ly="front" aria-pressed="false" data-i18n="ly_front">Fronts</button>
+      <button type="button" data-ly="depth" aria-pressed="false" data-i18n="ly_depth">Depth</button>
     </div>
     <div class="chart" id="chart">
       <canvas id="map"></canvas>
@@ -66,7 +68,7 @@
     </div>
     <div class="ramp" id="ramp"></div>
     <div class="keys">
-      <span><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4"></line></svg><span data-i18n="k_shelf">Shelf edge ~200 m (approx.)</span></span>
+      <span><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 4"></line></svg><span data-i18n="k_shelf">200 m / 1000 m depth lines</span></span>
       <span><svg width="22" height="6" aria-hidden="true"><line x1="0" y1="3" x2="22" y2="3" stroke="var(--canyon)" stroke-width="2" stroke-dasharray="2 3"></line></svg><span data-i18n="k_canyon">Canyons</span></span>
       <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" fill="var(--port)"></circle></svg><span data-i18n="k_town">Beach / town</span></span>
       <span><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1 11 10H1Z" fill="var(--bg)" stroke="currentColor" stroke-width="1.4"></path></svg><span data-i18n="k_sight">Sighting</span></span>
@@ -81,9 +83,11 @@
     </div>
     <dl class="facts">
       <div><dt data-i18n="f_sst">Surface temp</dt><dd id="fSst">–</dd></div>
+      <div><dt data-i18n="f_depth">Depth</dt><dd id="fDepth">–</dd></div>
       <div><dt data-i18n="f_front">Front strength</dt><dd id="fFront">–</dd></div>
       <div><dt data-i18n="f_pers">Front days (±1 day)</dt><dd id="fPers">–</dd></div>
       <div><dt data-i18n="f_struct">To shelf edge / canyon</dt><dd id="fStruct">–</dd></div>
+      <div><dt data-i18n="f_ground">Seabed</dt><dd id="fGround">–</dd></div>
       <div><dt data-i18n="f_up">Upwelling</dt><dd id="fUp">–</dd></div>
       <div><dt data-i18n="f_wave">Waves (max)</dt><dd id="fWave">–</dd></div>
     </dl>
@@ -99,7 +103,7 @@
     <h2 data-i18n="logTitle">Log a sighting</h2>
     <form id="sightForm" class="sform">
       <div class="field"><label for="sSp" data-i18n="species">Species</label>
-        <select id="sSp"><option value="bluefin" data-i18n="sp_bluefin">Bluefin tuna</option><option value="albacore" data-i18n="sp_albacore">Albacore</option><option value="marlin" data-i18n="sp_marlin">Marlin</option><option value="other" data-i18n="sp_other">Birds working / bait ball</option></select></div>
+        <select id="sSp"><option value="bluefin" data-i18n="sp_bluefin">Bluefin tuna</option><option value="albacore" data-i18n="sp_albacore">Albacore</option><option value="marlin" data-i18n="sp_marlin">Marlin</option><option value="bonito" data-i18n="sp_bonito">Bonito</option><option value="other" data-i18n="sp_other">Birds working / bait ball</option></select></div>
       <div class="field"><label for="sPos" data-i18n="where">Where (position)</label><input id="sPos" type="text" autocomplete="off" data-i18n-ph="wherePh" placeholder="e.g. 44°10'N 1°52'W" required></div>
       <div class="btnrow">
         <button type="button" class="ghost" id="pickBtn" aria-pressed="false" data-i18n="pickMap">Pick on map</button>

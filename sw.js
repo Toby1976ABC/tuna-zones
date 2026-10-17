@@ -1,6 +1,6 @@
 // Tuna Zones service worker: keeps the app usable offline at sea.
 // Bump VERSION whenever you change a file so phones pick up the new version.
-const VERSION = "tz-v1";
+const VERSION = "tz-v2";
 const SHELL = ["./", "index.html", "styles.css", "js/i18n.js", "js/geo.js", "js/seed.js", "js/app.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 
